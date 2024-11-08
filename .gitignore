@@ -1,3 +1,5 @@
+__pycache__/
 data
 label_mapping.json
-model_ocr.pth
+model_ocr_weights.pth
+model_ocr.onnx
