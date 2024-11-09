@@ -37,15 +37,17 @@ if __name__ == "__main__":
     with open('label_mapping.json', 'w') as json_file:
         json.dump(label_mapping, json_file)
 
-    x_train, x_temp, y_train, y_temp = train_test_split(images, encoded_labels, test_size=0.3, random_state=42)
-    x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=1/3, random_state=42)
+    x_train, x_temp, y_train, y_temp = train_test_split(
+        images, encoded_labels, test_size=0.3, random_state=42)
+    x_val, x_test, y_val, y_test = train_test_split(
+        x_temp, y_temp, test_size=1/3, random_state=42)
 
     train_transform = transforms.Compose([
         transforms.ToPILImage(),
         transforms.Lambda(lambda img: img.convert('L')),
         transforms.RandomRotation(3),
-        transforms.RandomAffine(0, translate=(0.1, 0.1)),
-        transforms.RandomResizedCrop(50, scale=(0.9, 1.1)),
+        # transforms.RandomAffine(0, translate=(0.1, 0.1)),
+        transforms.RandomResizedCrop(50, scale=(0.8, 1)),
         transforms.ToTensor()
     ])
 
@@ -54,10 +56,10 @@ if __name__ == "__main__":
             self.images = images
             self.labels = labels
             self.transform = transform
-        
+
         def __len__(self):
             return len(self.images)
-        
+
         def __getitem__(self, idx):
             image = self.images[idx]
             label = self.labels[idx]
@@ -72,8 +74,10 @@ if __name__ == "__main__":
     train_dataset = OCRDataset(x_train, y_train, transform=train_transform)
     val_dataset = OCRDataset(x_val, y_val)
     test_dataset = OCRDataset(x_test, y_test)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=16, shuffle=True)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=16, shuffle=False)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=16, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=16, shuffle=False)
 
     model = OCRModel(num_classes=len(set(labels))).to(device)
     criterion = nn.CrossEntropyLoss()
@@ -85,15 +89,15 @@ if __name__ == "__main__":
         running_loss = 0.0
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
-            
+
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
-            
+
             running_loss += loss.item()
-        
+
         # Validation
         model.eval()
         val_loss = 0.0
@@ -105,13 +109,13 @@ if __name__ == "__main__":
                 outputs = model(images)
                 loss = criterion(outputs, labels)
                 val_loss += loss.item()
-                
+
                 _, predicted = torch.max(outputs, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
-        
+
         print(f"Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(train_loader):.4f}, "
-            f"Val Loss: {val_loss/len(val_loader):.4f}, Val Accuracy: {100 * correct / total:.2f}%")
+              f"Val Loss: {val_loss/len(val_loader):.4f}, Val Accuracy: {100 * correct / total:.2f}%")
 
     # Save the model
     torch.save(model.state_dict(), 'model_ocr_weights.pth')
